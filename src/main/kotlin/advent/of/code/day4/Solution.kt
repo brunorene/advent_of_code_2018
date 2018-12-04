@@ -38,5 +38,30 @@ fun part1(): Int {
         .maxBy { it.second }!!.first
 }
 
-fun part2() {
+fun part2(): Int {
+    val guardSleep = mutableMapOf<Int, Array<Int>>()
+    var currentGuard = 0
+    var asleep = 0
+    val lines = File("day4.txt").readLines().sorted()
+    for (line in lines) {
+        when {
+            SHIFT.match matches line -> {
+                currentGuard = SHIFT.match.find(line)?.groups!![6]!!.value.toInt()
+                if (guardSleep[currentGuard] == null)
+                    guardSleep[currentGuard] = Array(60) { 0 }
+            }
+            SLEEP.match matches line -> {
+                asleep = SLEEP.match.find(line)!!.groups[5]!!.value.toInt()
+            }
+            AWAKE.match matches line -> {
+                val awake = AWAKE.match.find(line)!!.groups[5]!!.value.toInt()
+                for (b in (asleep until awake))
+                    guardSleep[currentGuard]!![b]++
+            }
+        }
+    }
+    val guardMostSleep = guardSleep.maxBy { it.value.max() ?: 0 }!!.key
+    return guardMostSleep * guardSleep[guardMostSleep]!!
+        .mapIndexed { index, i -> Pair(index, i) }
+        .maxBy { it.second }!!.first
 }
