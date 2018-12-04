@@ -1,15 +1,15 @@
-package advent.of.code.day1
+package advent.of.code.day01
 
 import java.io.File
 
-fun part1() = File("day1.txt").readLines().map { it.toInt() }.sum()
+fun part1() = File("day01.txt").readLines().map { it.toInt() }.sum()
 
 fun part2(): Int? {
     val pastFreqs: MutableSet<Int> = mutableSetOf(0)
     var currentFreq = 0
     var found: Int? = null
     while (true) {
-        val freqs = File("day1.txt").readLines().map { it.toInt() }
+        val freqs = File("day01.txt").readLines().map { it.toInt() }
         for (freq in freqs) {
             currentFreq += freq
             if (pastFreqs.contains(currentFreq)) {

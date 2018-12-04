@@ -1,11 +1,11 @@
-package advent.of.code.day2
+package advent.of.code.day02
 
 import java.io.File
 
 fun part1(): Int {
     var threesCount = 0
     var twosCount = 0
-    File("day2.txt")
+    File("day02.txt")
         .readLines()
         .forEach {
             val counts = it.groupBy { c -> c }
@@ -19,10 +19,10 @@ fun part1(): Int {
 
 fun part2(): String {
     var result = ""
-    File("day2.txt")
+    File("day02.txt")
         .readLines()
         .forEach { str1 ->
-            File("day2.txt")
+            File("day02.txt")
                 .readLines()
                 .forEach { str2 ->
                     val seq = str1.asSequence().zip(str2.asSequence())

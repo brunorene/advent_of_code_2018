@@ -1,10 +1,10 @@
-package advent.of.code.day3
+package advent.of.code.day03
 
 import java.io.File
 
 fun part1(): Int {
     val fabric = List(1000) { MutableList(1000) { 0 } }
-    File("day3.txt").readLines().forEach { line ->
+    File("day03.txt").readLines().forEach { line ->
         val regex = Regex("#[0-9]+ @ ([0-9]+),([0-9]+): ([0-9]+)x([0-9]+)")
         val result = regex.find(line)
         if (result != null) {
@@ -28,7 +28,7 @@ fun part1(): Int {
 
 fun part2(): Int {
     val fabric = List(1000) { MutableList(1000) { 0 } }
-    File("day3.txt").readLines().forEach { line ->
+    File("day03.txt").readLines().forEach { line ->
         val regex = Regex("#[0-9]+ @ ([0-9]+),([0-9]+): ([0-9]+)x([0-9]+)")
         val result = regex.find(line)
         if (result != null) {
@@ -44,7 +44,7 @@ fun part2(): Int {
         }
     }
     var goodId = -1
-    File("day3.txt").readLines().forEach { line ->
+    File("day03.txt").readLines().forEach { line ->
         val regex = Regex("#([0-9]+) @ ([0-9]+),([0-9]+): ([0-9]+)x([0-9]+)")
         val result = regex.find(line)
         if (result != null) {
