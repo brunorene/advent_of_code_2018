@@ -1,6 +1,9 @@
 package advent.of.code.day05
 
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.async
 import java.io.File
+
 
 private val input = File("day05.txt").readText().trim()
 
@@ -17,13 +20,9 @@ fun shrink(source: String): Int {
 
 fun part1() = shrink(input)
 
-fun part2(): Int {
-    var min = Int.MAX_VALUE
-    for (removeC in 'a'..'z') {
-        var str = input
-        str = str.replace(Regex("[$removeC${removeC.toUpperCase()}]"), "")
-        min = arrayOf(min, shrink(str)).min()!!
-    }
-    return min
-}
+suspend fun part2() = ('a'..'z').map {
+    var str = input
+    str = str.replace(Regex("[$it${it.toUpperCase()}]"), "")
+    GlobalScope.async { shrink(str) }
+}.map { it.await() }.min()
 
