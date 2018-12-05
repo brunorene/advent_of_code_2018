@@ -21,8 +21,10 @@ fun shrink(source: String): Int {
 fun part1() = shrink(input)
 
 suspend fun part2() = ('a'..'z').map {
-    var str = input
-    str = str.replace(Regex("[$it${it.toUpperCase()}]"), "")
-    GlobalScope.async { shrink(str) }
+    GlobalScope.async {
+        var str = input
+        str = str.replace(Regex("[$it${it.toUpperCase()}]"), "")
+        shrink(str)
+    }
 }.map { it.await() }.min()
 
