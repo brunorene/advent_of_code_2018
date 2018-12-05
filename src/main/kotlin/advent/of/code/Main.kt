@@ -9,4 +9,6 @@ fun main(args: Array<String>) {
     println("day3 - part2 - ${advent.of.code.day03.part2()}")
     println("day4 - part1 - ${advent.of.code.day04.part1()}")
     println("day4 - part2 - ${advent.of.code.day04.part2()}")
+    println("day5 - part1 - ${advent.of.code.day05.part1()}")
+    println("day5 - part2 - ${advent.of.code.day05.part2()}")
 }
