@@ -15,20 +15,20 @@ val input: List<Point> = File("day06.txt").readLines().map {
 
 fun part1(): Int {
     val topLeftBig = Point(
-        (input.map { it.x }.min() ?: 0) - 10,
-        (input.map { it.y }.min() ?: 0) - 10
+        input.map { it.x }.min()!! - 10,
+        input.map { it.y }.min()!! - 10
     )
     val topLeft = Point(
-        input.map { it.x }.min() ?: 0,
-        input.map { it.y }.min() ?: 0
+        input.map { it.x }.min()!!,
+        input.map { it.y }.min()!!
     )
     val bottomRightBig = Point(
-        (input.map { it.x }.max() ?: 100000) + 10,
-        (input.map { it.y }.max() ?: 100000) + 10
+        input.map { it.x }.max()!! + 10,
+        input.map { it.y }.max()!! + 10
     )
     val bottomRight = Point(
-        input.map { it.x }.max() ?: 100000,
-        input.map { it.y }.max() ?: 100000
+        input.map { it.x }.max()!!,
+        input.map { it.y }.max()!!
     )
 
     val areas = mutableMapOf<Point, Int>()
@@ -56,12 +56,12 @@ fun part1(): Int {
 
 fun part2(): Int {
     val topLeft = Point(
-        input.map { it.x }.min() ?: 0,
-        input.map { it.y }.min() ?: 0
+        input.map { it.x }.min()!!,
+        input.map { it.y }.min()!!
     )
     val bottomRight = Point(
-        input.map { it.x }.max() ?: 100000,
-        input.map { it.y }.max() ?: 100000
+        input.map { it.x }.max()!!,
+        input.map { it.y }.max()!!
     )
 
     var area = 0
