@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.3.10"
+    kotlin("jvm") version "1.3.0"
     application
 }
 
@@ -18,7 +18,7 @@ repositories {
 
 dependencies {
     compile(kotlin("stdlib-jdk8"))
-    compile("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.0.1")
+    compile("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.0.0")
 }
 
 tasks.withType<KotlinCompile> {
