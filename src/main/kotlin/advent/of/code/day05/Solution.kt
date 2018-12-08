@@ -4,10 +4,9 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
 import java.io.File
 
-
 private val input = File("day05.txt").readText().trim()
 
-private val regex = Regex(('a'..'z').map { "$it${it.toUpperCase()}|${it.toUpperCase()}$it" }.joinToString("|"))
+private val regex = Regex(('a'..'z').joinToString("|") { "$it${it.toUpperCase()}|${it.toUpperCase()}$it" })
 
 fun shrink(source: String): Int {
     var str = source
