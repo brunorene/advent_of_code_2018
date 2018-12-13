@@ -2,9 +2,18 @@ package advent.of.code.day13
 
 import advent.of.code.day13.Direction.*
 import advent.of.code.day13.Forward.*
-import java.io.BufferedWriter
 import java.io.File
 import java.util.*
+
+val ANSI_RESET = "\u001B[0m"
+val ANSI_BLACK = "\u001B[30m"
+val ANSI_RED = "\u001B[31m"
+val ANSI_GREEN = "\u001B[32m"
+val ANSI_YELLOW = "\u001B[33m"
+val ANSI_BLUE = "\u001B[34m"
+val ANSI_PURPLE = "\u001B[35m"
+val ANSI_CYAN = "\u001B[36m"
+val ANSI_WHITE = "\u001B[37m"
 
 const val FILENAME = "day13.txt"
 
@@ -160,31 +169,32 @@ class TrackMap(lines: List<String>) {
     }
 
     override fun toString() =
-        tracks.keys.sortedWith(compareBy({ it.y }, { it.x })).map { p ->
-            val path = track(p)
-            val pixel = if (p.x == 0) "\n" else ""
-            pixel + if (cartPositions.contains(p) && path is Track) {
-                val cart = path.cart
-                if (cart is Cart)
-                    when (cart.direction) {
-                        UP -> '^'
-                        DOWN -> 'v'
-                        LEFT -> '<'
-                        RIGHT -> '>'
+        tracks.keys.sortedWith(compareBy({ it.y }, { it.x }))
+            .joinToString("") { p ->
+                val path = track(p)
+                val pixel = if (p.x == 0) "\n" else ""
+                pixel + if (cartPositions.contains(p) && path is Track) {
+                    val cart = path.cart
+                    if (cart is Cart)
+                        ANSI_RED + when (cart.direction) {
+                            UP -> "🡅"
+                            DOWN -> "🡇"
+                            LEFT -> "🡄"
+                            RIGHT -> "🡆"
+                        } + ANSI_RESET
+                    else '$'
+                } else
+                    when (path) {
+                        is HorizontalLine -> '-'
+                        is VerticalLine -> '|'
+                        is UpLeftCurve -> '/'
+                        is DownRightCurve -> '/'
+                        is DownLeftCurve -> '\\'
+                        is UpRightCurve -> '\\'
+                        is Intersection -> '+'
+                        else -> ' '
                     }
-                else '$'
-            } else
-                when (path) {
-                    is HorizontalLine -> '-'
-                    is VerticalLine -> '|'
-                    is UpLeftCurve -> '/'
-                    is DownRightCurve -> '/'
-                    is DownLeftCurve -> '\\'
-                    is UpRightCurve -> '\\'
-                    is Intersection -> '+'
-                    else -> ' '
-                }
-        }.joinToString("")
+            }
 
     fun track(p: Point) = if (p.x < 0 || p.y < 0) NoTrack else tracks[p] ?: NoTrack
 
@@ -211,12 +221,10 @@ class TrackMap(lines: List<String>) {
         else NoTrack
     }
 
-    fun moveCarts(writer: BufferedWriter) {
-        writer.write(toString())
-        writer.newLine()
-        writer.newLine()
+    fun moveCarts() {
+        print("\u001b[H\u001b[2J")
+        println(toString())
         cartPositions = cartPositions.map { cartPos ->
-            print("$cartPos ")
             val path = track(cartPos)
             var newPos = cartPos
             if (path is Track) {
@@ -235,7 +243,6 @@ class TrackMap(lines: List<String>) {
             newPos
         }.sortedWith(compareBy({ it.y }, { it.x }))
             .toMutableList()
-        println()
     }
 }
 
@@ -244,9 +251,7 @@ class CollisionException(val collisionPoint: Point) : Exception()
 fun part1(): String {
     val map = TrackMap(File(FILENAME).readLines())
     return try {
-        File("result.txt").bufferedWriter().use { writer ->
-            (1..20000).forEach { map.moveCarts(writer) }
-        }
+        (1..20000).forEach { Thread.sleep(500); map.moveCarts() }
         "no collisions"
     } catch (ex: CollisionException) {
         "${ex.collisionPoint.x},${ex.collisionPoint.y}"
