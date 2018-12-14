@@ -4,12 +4,17 @@ import java.io.File
 
 // STILL WRONG :(
 
-class PlantsInPots(init: String) {
-    private val data = mutableSetOf<Long>()
+data class PlantsInPots(val data: MutableSet<Long> = mutableSetOf()) {
 
-    init {
-        init.forEachIndexed { index, c -> set(index.toLong(), c) }
+    companion object {
+        fun build(init: String): PlantsInPots {
+            val instance = PlantsInPots()
+            init.forEachIndexed { index, c -> instance[index.toLong()] = c }
+            return instance
+        }
     }
+
+    fun copy() = PlantsInPots(data.toMutableSet())
 
     operator fun get(index: Long) = if (data.contains(index)) '#' else '.'
 
@@ -27,7 +32,12 @@ class PlantsInPots(init: String) {
         ((middle - borderSize)..(middle + borderSize)).map { get(it) }.joinToString("")
 
     override fun toString() =
-        (min()..max()).mapIndexed { idx, v -> if (idx == 0 && get(v) == '#') 'X' else get(v) }.joinToString("")
+        (-10..max()).joinToString("") { idx ->
+            if (idx == 0L) get(idx).toString()
+                .replace('#', 'X')
+                .replace('.', 'o')
+            else get(idx).toString()
+        }
 }
 
 const val initState =
@@ -37,15 +47,17 @@ val rules = File("day12.txt").readLines().drop(2)
     .map { it.substring((0..4)) to it[9] }
 
 fun calculate(lasIteration: Int): Long {
-    val generation = PlantsInPots(initState)
+    val generation = PlantsInPots.build(initState)
+//    println(info(0, generation))
     for (g in (1..lasIteration)) {
-        ((generation.min() - 5)..(generation.max() + 5))
+        val before = generation.copy()
+        ((before.min() - 5)..(before.max() + 5))
             .map { pos ->
-                val pattern = generation.slice(pos, 2)
+                val pattern = before.slice(pos, 2)
                 val rule = rules.firstOrNull { pattern == it.first }
                 generation[pos] = rule?.second ?: '.'
             }
-        println(info(g, generation))
+//        println(info(g, generation))
     }
     return generation.sumPlantIndexes()
 }
@@ -53,11 +65,12 @@ fun calculate(lasIteration: Int): Long {
 fun part1() = calculate(20)
 
 fun part2(): Long {
-//    val res200 = calculate(200)
-//    val res300 = calculate(300)
+    val res200 = calculate(200)
+    val res300 = calculate(300)
 //    val res400 = calculate(400)
+    val diff = res300 - res200
 //    println("${res400 - res300} ${res300 - res200}")
-    return 0L
+    return (50_000_000_000 - 200) / 100 * diff + res200
 }
 
 fun info(g: Int, gen: PlantsInPots) =

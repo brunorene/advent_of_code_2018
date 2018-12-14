@@ -6,14 +6,14 @@ import java.io.File
 import java.util.*
 
 val ANSI_RESET = "\u001B[0m"
-val ANSI_BLACK = "\u001B[30m"
 val ANSI_RED = "\u001B[31m"
-val ANSI_GREEN = "\u001B[32m"
-val ANSI_YELLOW = "\u001B[33m"
-val ANSI_BLUE = "\u001B[34m"
-val ANSI_PURPLE = "\u001B[35m"
-val ANSI_CYAN = "\u001B[36m"
-val ANSI_WHITE = "\u001B[37m"
+//val ANSI_BLACK = "\u001B[30m"
+//val ANSI_GREEN = "\u001B[32m"
+//val ANSI_YELLOW = "\u001B[33m"
+//val ANSI_BLUE = "\u001B[34m"
+//val ANSI_PURPLE = "\u001B[35m"
+//val ANSI_CYAN = "\u001B[36m"
+//val ANSI_WHITE = "\u001B[37m"
 
 const val FILENAME = "day13.txt"
 
@@ -93,47 +93,16 @@ data class Cart(var direction: Direction) : Vehicle() {
 
 object NoCart : Vehicle()
 
-sealed class Path(open val touches: List<Direction>)
-abstract class Track(open var cart: Vehicle, override val touches: List<Direction>) : Path(touches)
-data class VerticalLine(override var cart: Vehicle = NoCart) : Track(cart, listOf(UP, DOWN)) {
-    override val touches: List<Direction>
-        get() = super.touches
-}
-
-data class HorizontalLine(override var cart: Vehicle = NoCart) : Track(cart, listOf(LEFT, RIGHT)) {
-    override val touches: List<Direction>
-        get() = super.touches
-}
-
-data class UpRightCurve(override var cart: Vehicle = NoCart) : Track(cart, listOf(UP, RIGHT)) {
-    override val touches: List<Direction>
-        get() = super.touches
-}
-
-data class UpLeftCurve(override var cart: Vehicle = NoCart) : Track(cart, listOf(UP, LEFT)) {
-    override val touches: List<Direction>
-        get() = super.touches
-}
-
-data class DownLeftCurve(override var cart: Vehicle = NoCart) : Track(cart, listOf(DOWN, LEFT)) {
-    override val touches: List<Direction>
-        get() = super.touches
-}
-
-data class DownRightCurve(override var cart: Vehicle = NoCart) : Track(cart, listOf(DOWN, RIGHT)) {
-    override val touches: List<Direction>
-        get() = super.touches
-}
-
-data class Intersection(override var cart: Vehicle = NoCart) : Track(cart, listOf(UP, DOWN, LEFT, RIGHT)) {
-    override val touches: List<Direction>
-        get() = super.touches
-}
-
-object NoTrack : Path(listOf()) {
-    override val touches: List<Direction>
-        get() = super.touches
-}
+sealed class Path()
+abstract class Track(open var cart: Vehicle) : Path()
+data class VerticalLine(override var cart: Vehicle = NoCart) : Track(cart)
+data class HorizontalLine(override var cart: Vehicle = NoCart) : Track(cart)
+data class UpRightCurve(override var cart: Vehicle = NoCart) : Track(cart)
+data class UpLeftCurve(override var cart: Vehicle = NoCart) : Track(cart)
+data class DownLeftCurve(override var cart: Vehicle = NoCart) : Track(cart)
+data class DownRightCurve(override var cart: Vehicle = NoCart) : Track(cart)
+data class Intersection(override var cart: Vehicle = NoCart) : Track(cart)
+object NoTrack : Path()
 
 class TrackMap(lines: List<String>) {
     private val tracks: MutableMap<Point, Path> = mutableMapOf()
@@ -172,15 +141,15 @@ class TrackMap(lines: List<String>) {
         tracks.keys.sortedWith(compareBy({ it.y }, { it.x }))
             .joinToString("") { p ->
                 val path = track(p)
-                val pixel = if (p.x == 0) "\n" else ""
+                val pixel = if (p.x == 0 && p.y > 0) "\n" else ""
                 pixel + if (cartPositions.contains(p) && path is Track) {
                     val cart = path.cart
                     if (cart is Cart)
                         ANSI_RED + when (cart.direction) {
-                            UP -> "🡅"
-                            DOWN -> "🡇"
-                            LEFT -> "🡄"
-                            RIGHT -> "🡆"
+                            UP -> "^"
+                            DOWN -> "v"
+                            LEFT -> "<"
+                            RIGHT -> ">"
                         } + ANSI_RESET
                     else '$'
                 } else
@@ -198,32 +167,20 @@ class TrackMap(lines: List<String>) {
 
     fun track(p: Point) = if (p.x < 0 || p.y < 0) NoTrack else tracks[p] ?: NoTrack
 
-    private fun up(p: Point) = track(p.copy(y = p.y - 1))
-    private fun down(p: Point) = track(p.copy(y = p.y + 1))
     private fun left(p: Point) = track(p.copy(x = p.x - 1))
-    private fun right(p: Point) = track(p.copy(x = p.x + 1))
 
     private fun processCart(direction: Direction, p: Point): Path {
         cartPositions.add(p)
         cartPositions.sortWith(compareBy({ it.y }, { it.x }))
-        val touchesUp = DOWN in up(p).touches
-        val touchesDown = UP in down(p).touches
-        val touchesRight = LEFT in right(p).touches
-        val touchesLeft = RIGHT in left(p).touches
-        return if (touchesUp && touchesDown)
-            if (touchesLeft && touchesRight) Intersection(Cart(direction))
-            else VerticalLine(Cart(direction))
-        else if (touchesLeft && touchesRight) HorizontalLine(Cart(direction))
-        else if (touchesLeft && touchesDown) DownLeftCurve(Cart(direction))
-        else if (touchesRight && touchesDown) DownRightCurve(Cart(direction))
-        else if (touchesRight && touchesUp) UpRightCurve(Cart(direction))
-        else if (touchesLeft && touchesUp) UpRightCurve(Cart(direction))
-        else NoTrack
+        return if (direction in listOf(UP, DOWN)) VerticalLine(Cart(direction))
+        else HorizontalLine(Cart(direction))
     }
 
-    fun moveCarts() {
-        print("\u001b[H\u001b[2J")
-        println(toString())
+    fun moveCarts(print: Boolean) {
+        if (print) {
+            print("\u001b[H\u001b[2J")
+            println(toString())
+        }
         cartPositions = cartPositions.map { cartPos ->
             val path = track(cartPos)
             var newPos = cartPos
@@ -251,7 +208,7 @@ class CollisionException(val collisionPoint: Point) : Exception()
 fun part1(): String {
     val map = TrackMap(File(FILENAME).readLines())
     return try {
-        (1..20000).forEach { Thread.sleep(500); map.moveCarts() }
+        (1..20000).forEach { Thread.sleep(5); map.moveCarts(false) }
         "no collisions"
     } catch (ex: CollisionException) {
         "${ex.collisionPoint.x},${ex.collisionPoint.y}"
