@@ -17,34 +17,32 @@ const val ANSI_RED = "\u001B[31m"
 
 const val FILENAME = "day13.txt"
 
-data class Point(var x: Int, var y: Int) {
-    override fun toString(): String {
-        return "(${x.toString().padStart(3, '0')},${y.toString().padStart(3, '0')})"
-    }
-
-    fun move(direction: Direction) {
-        when (direction) {
-            UP -> y--
-            DOWN -> y++
-            LEFT -> x--
-            RIGHT -> x++
-        }
-
-    }
-}
-
 enum class Direction { UP, DOWN, LEFT, RIGHT }
 
 enum class Forward { STRAIGHT, TURN_LEFT, TURN_RIGHT }
 
-sealed class Vehicle
-data class Cart(var direction: Direction, var position: Point) : Vehicle(), Comparable<Cart> {
+data class Position(var x: Int, var y: Int) : Comparable<Position> {
+    override fun compareTo(other: Position): Int {
+        return compareBy<Position>({ it.y }, { it.x }).compare(this, other)
+    }
 
-    private val comparator: Comparator<Cart> = compareBy({ it.position.y }, { it.position.x })
+    override fun toString(): String {
+        return "(${x.toString().padStart(3, '0')},${y.toString().padStart(3, '0')})"
+    }
 
-    override fun compareTo(other: Cart) = comparator.compare(this, other)
+    fun move(direction: Direction?) = when (direction) {
+        UP -> copy(y = y - 1)
+        DOWN -> copy(y = y + 1)
+        LEFT -> copy(x = x - 1)
+        RIGHT -> copy(x = x + 1)
+        else -> copy()
+    }
+}
 
-    private val nextDirection = ArrayDeque(listOf(TURN_LEFT, STRAIGHT, TURN_RIGHT))
+data class Cart(
+    var direction: Direction,
+    val nextDirection: Deque<Forward> = ArrayDeque(listOf(TURN_LEFT, STRAIGHT, TURN_RIGHT))
+) {
 
     private fun intersectionForward(): Forward {
         val f = nextDirection.pop()
@@ -52,23 +50,10 @@ data class Cart(var direction: Direction, var position: Point) : Vehicle(), Comp
         return f
     }
 
-    fun moveForward(map: TrackMap) {
-        position.move(direction)
-        val nextPath = map.track(position)
-        direction = when (nextPath) {
-            is ForwardSlashCurve -> when (direction) {
-                UP -> RIGHT
-                DOWN -> LEFT
-                LEFT -> UP
-                RIGHT -> DOWN
-            }
-            is BackSlashCurve -> when (direction) {
-                UP -> LEFT
-                DOWN -> RIGHT
-                LEFT -> DOWN
-                RIGHT -> UP
-            }
-            is Intersection -> when (intersectionForward()) {
+    fun changeDirection(track: Track?): Cart {
+        val newDirection = if (track is Intersection) {
+            val forward = intersectionForward()
+            when (forward) {
                 STRAIGHT -> direction
                 TURN_LEFT -> when (direction) {
                     UP -> LEFT
@@ -82,42 +67,59 @@ data class Cart(var direction: Direction, var position: Point) : Vehicle(), Comp
                     LEFT -> UP
                     RIGHT -> DOWN
                 }
+
             }
-            else -> direction
+        } else {
+            when (track) {
+                is ForwardSlashCurve -> when (direction) {
+                    UP ->
+                        RIGHT
+                    DOWN -> LEFT
+                    LEFT -> UP
+                    RIGHT -> DOWN
+                }
+                is BackSlashCurve -> when (direction) {
+                    UP ->
+                        LEFT
+                    DOWN -> RIGHT
+                    LEFT -> DOWN
+                    RIGHT -> UP
+                }
+                else -> direction
+            }
         }
+        return copy(direction = newDirection)
     }
 }
 
-object NoCart : Vehicle()
+sealed class Track(open val position: Position, open var cart: Cart?)
+data class VerticalLine(override val position: Position, override var cart: Cart? = null) : Track(position, cart)
+data class HorizontalLine(override val position: Position, override var cart: Cart? = null) : Track(position, cart)
+data class ForwardSlashCurve(override val position: Position, override var cart: Cart? = null) :
+    Track(position, cart)
 
-sealed class Path
-abstract class Track(open var cart: Vehicle) : Path()
-data class VerticalLine(override var cart: Vehicle = NoCart) : Track(cart)
-data class HorizontalLine(override var cart: Vehicle = NoCart) : Track(cart)
-data class ForwardSlashCurve(override var cart: Vehicle = NoCart) : Track(cart)
-data class BackSlashCurve(override var cart: Vehicle = NoCart) : Track(cart)
-data class Intersection(override var cart: Vehicle = NoCart) : Track(cart)
-object NoTrack : Path()
+data class BackSlashCurve(override val position: Position, override var cart: Cart? = null) : Track(position, cart)
+data class Intersection(override val position: Position, override var cart: Cart? = null) : Track(position, cart)
 
 class TrackMap(lines: List<String>) {
-    private val tracks: MutableMap<Point, Path> = mutableMapOf()
-    private var carts: MutableSet<Cart> = TreeSet()
+    private val tracks: MutableMap<Position, Track?> = mutableMapOf()
+    private var cartPositions: MutableSet<Position> = TreeSet()
 
     init {
         lines.forEachIndexed { y, line ->
             line.forEachIndexed { x, track ->
-                val p = Point(x, y)
+                val p = Position(x, y)
                 tracks[p] = when (track) {
-                    '/' -> ForwardSlashCurve()
-                    '\\' -> BackSlashCurve()
-                    '-' -> HorizontalLine()
-                    '|' -> VerticalLine()
-                    '+' -> Intersection()
+                    '/' -> ForwardSlashCurve(p)
+                    '\\' -> BackSlashCurve(p)
+                    '-' -> HorizontalLine(p)
+                    '|' -> VerticalLine(p)
+                    '+' -> Intersection(p)
                     '<' -> processCart(LEFT, p)
                     '>' -> processCart(RIGHT, p)
                     'v' -> processCart(DOWN, p)
                     '^' -> processCart(UP, p)
-                    else -> NoTrack
+                    else -> null
                 }
             }
         }
@@ -143,39 +145,40 @@ class TrackMap(lines: List<String>) {
                         is ForwardSlashCurve -> '/'
                         is BackSlashCurve -> '\\'
                         is Intersection -> '+'
-                        else -> '#'
                     }
                 } else " "
             }
 
-    fun track(p: Point) = if (p.x < 0 || p.y < 0) NoTrack else tracks[p] ?: NoTrack
+    fun track(p: Position) = if (p.x >= 0 && p.y >= 0) tracks[p] else null
 
-    private fun processCart(direction: Direction, p: Point): Path {
-        val cart = Cart(direction, p)
-        carts.add(cart)
-        return if (direction in listOf(UP, DOWN)) VerticalLine(cart) else HorizontalLine(cart)
+    private fun processCart(direction: Direction, p: Position): Track {
+        val cart = Cart(direction)
+        cartPositions.add(p)
+        return if (direction in listOf(UP, DOWN)) VerticalLine(p, cart) else HorizontalLine(p, cart)
     }
 
     fun moveCarts(print: Boolean) {
-        println(carts)
+        println(cartPositions)
         if (print) {
             print("\u001b[H\u001b[2J")
             println(toString())
         }
-        carts.toCollection(TreeSet()).forEach { cart ->
-            val path = track(cart.position)
-            if (path is Track) {
-                cart.moveForward(this)
-                if (carts.zipWithNext().any { (c1, c2) -> c1.position == c2.position })
-                    throw CollisionException(cart.position)
-                path.cart = NoCart
-                (track(cart.position) as? Track)?.cart = cart
-            }
-        }
+        cartPositions = cartPositions.map { position ->
+            val currentTrack = track(position)
+            var newCart = currentTrack?.cart
+            val newPosition = position.move(newCart?.direction)
+            val newTrack = track(newPosition)
+            newCart = newCart?.changeDirection(newTrack)
+            if (cartPositions.contains(newPosition))
+                throw CollisionException(newPosition)
+            currentTrack?.cart = null
+            newTrack?.cart = newCart
+            newPosition
+        }.toCollection(TreeSet())
     }
 }
 
-class CollisionException(val collisionPoint: Point) : Exception()
+class CollisionException(val collisionPosition: Position) : Exception()
 
 fun part1(): String {
     val map = TrackMap(File(FILENAME).readLines())
@@ -183,8 +186,6 @@ fun part1(): String {
         (1..200).forEach { Thread.sleep(0); map.moveCarts(false) }
         "no collisions"
     } catch (ex: CollisionException) {
-        "${ex.collisionPoint.x},${ex.collisionPoint.y}"
+        "${ex.collisionPosition.x},${ex.collisionPosition.y}"
     }
 }
-
-fun part2() = 2
