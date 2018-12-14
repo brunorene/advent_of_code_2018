@@ -1,6 +1,6 @@
 package advent.of.code.day14
 
-fun processUntil10(e1: Byte, e2: Byte, created: Int): List<Byte> {
+fun processUntil10(e1: Byte, e2: Byte, created: Int): String {
     val recipes = mutableListOf(e1, e2)
     var elf1 = 0
     var elf2 = 1
@@ -13,7 +13,7 @@ fun processUntil10(e1: Byte, e2: Byte, created: Int): List<Byte> {
         elf1 = (elf1 + recipes[elf1].toInt() + 1) % recipes.size
         elf2 = (elf2 + recipes[elf2].toInt() + 1) % recipes.size
     }
-    return recipes
+    return recipes.takeLast(10).joinToString("")
 }
 
 fun findSize(e1: Byte, e2: Byte, search: List<Byte>): Int {
@@ -37,6 +37,6 @@ fun findSize(e1: Byte, e2: Byte, search: List<Byte>): Int {
     }
 }
 
-fun part1() = processUntil10(3, 7, 920831).takeLast(10).joinToString("")
+fun part1() = processUntil10(3, 7, 920831)
 
 fun part2() = findSize(3, 7, listOf(9, 2, 0, 8, 3, 1))
