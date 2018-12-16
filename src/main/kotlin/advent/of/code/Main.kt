@@ -48,9 +48,17 @@ suspend fun main(args: Array<String>) {
 //    start = System.currentTimeMillis()
 //    println("day12 - part2 - ${advent.of.code.day12.part2()} - ${System.currentTimeMillis() - start}ms")
 //    start = System.currentTimeMillis()
-    println("day13 - part1 - ${advent.of.code.day13.part1()} - ${System.currentTimeMillis() - start}ms")
+
+//    println("day13 - part1 - ${advent.of.code.day13.part1()} - ${System.currentTimeMillis() - start}ms")
+
 //    start = System.currentTimeMillis()
 //    println("day14 - part1 - ${advent.of.code.day14.part1()} - ${System.currentTimeMillis() - start}ms")
 //    start = System.currentTimeMillis()
 //    println("day14 - part2 - ${advent.of.code.day14.part2()} - ${System.currentTimeMillis() - start}ms")
+//    start = System.currentTimeMillis()
+//    println("day15 - part1 - ${advent.of.code.day15.part1()} - ${System.currentTimeMillis() - start}ms")
+//    start = System.currentTimeMillis()
+//    println("day16 - part1 - ${advent.of.code.day16.part1()} - ${System.currentTimeMillis() - start}ms")
+//    start = System.currentTimeMillis()
+    println("day16 - part2 - ${advent.of.code.day16.part2()} - ${System.currentTimeMillis() - start}ms")
 }
