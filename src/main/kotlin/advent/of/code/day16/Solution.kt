@@ -118,7 +118,7 @@ fun part2(): Int {
     val afterRegex = Regex("After:  \\[([0-9]+), ([0-9]+), ([0-9]+), ([0-9]+)]")
     val commandRegex = Regex("^([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+)")
     input.bufferedReader().use { reader ->
-        var commandMap = mutableMapOf<Int, MutableSet<CPU.(Int, Int, Int) -> Unit>>()
+        val commandMap = mutableMapOf<Int, MutableSet<CPU.(Int, Int, Int) -> Unit>>()
         while (true) {
             var line = reader.readLine().trim()
             val beforeResult = beforeRegex.find(line) ?: break
