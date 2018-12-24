@@ -22,6 +22,8 @@ enum class Direction { UP, DOWN, LEFT, RIGHT }
 enum class Forward { STRAIGHT, TURN_LEFT, TURN_RIGHT }
 
 data class Position(var x: Int, var y: Int) : Comparable<Position> {
+    var removed: Boolean = false
+
     override fun compareTo(other: Position): Int {
         return compareBy<Position>({ it.y }, { it.x }).compare(this, other)
     }
@@ -72,18 +74,16 @@ data class Cart(
         } else {
             when (track) {
                 is ForwardSlashCurve -> when (direction) {
-                    UP ->
-                        RIGHT
+                    UP -> RIGHT
                     DOWN -> LEFT
-                    LEFT -> UP
-                    RIGHT -> DOWN
-                }
-                is BackSlashCurve -> when (direction) {
-                    UP ->
-                        LEFT
-                    DOWN -> RIGHT
                     LEFT -> DOWN
                     RIGHT -> UP
+                }
+                is BackSlashCurve -> when (direction) {
+                    UP -> LEFT
+                    DOWN -> RIGHT
+                    LEFT -> UP
+                    RIGHT -> DOWN
                 }
                 else -> direction
             }
@@ -103,7 +103,7 @@ data class Intersection(override val position: Position, override var cart: Cart
 
 class TrackMap(lines: List<String>) {
     private val tracks: MutableMap<Position, Track?> = mutableMapOf()
-    private var cartPositions: MutableSet<Position> = TreeSet()
+    var cartPositions: MutableList<Position> = mutableListOf()
 
     init {
         lines.forEachIndexed { y, line ->
@@ -149,7 +149,7 @@ class TrackMap(lines: List<String>) {
                 } else " "
             }
 
-    fun track(p: Position) = if (p.x >= 0 && p.y >= 0) tracks[p] else null
+    private fun track(p: Position) = if (p.x >= 0 && p.y >= 0) tracks[p] else null
 
     private fun processCart(direction: Direction, p: Position): Track {
         val cart = Cart(direction)
@@ -158,23 +158,62 @@ class TrackMap(lines: List<String>) {
     }
 
     fun moveCarts(print: Boolean) {
-        println(cartPositions)
         if (print) {
             print("\u001b[H\u001b[2J")
             println(toString())
+            Thread.sleep(3000)
         }
-        cartPositions = cartPositions.map { position ->
-            val currentTrack = track(position)
+        val currentPos = cartPositions.sorted().toMutableList()
+        for (idx in (0 until currentPos.size)) {
+            val currentTrack = track(currentPos[idx])
             var newCart = currentTrack?.cart
-            val newPosition = position.move(newCart?.direction)
+            val newPosition = currentPos[idx].move(newCart?.direction)
+            if (currentPos.contains(newPosition))
+                throw CollisionException(newPosition)
             val newTrack = track(newPosition)
             newCart = newCart?.changeDirection(newTrack)
-            if (cartPositions.contains(newPosition))
-                throw CollisionException(newPosition)
             currentTrack?.cart = null
             newTrack?.cart = newCart
-            newPosition
-        }.toCollection(TreeSet())
+            currentPos[idx] = newPosition
+        }
+        cartPositions = currentPos.sorted().toMutableList()
+        println(cartPositions)
+    }
+
+    fun moveCartsAndRemove(print: Boolean): Position? {
+        if (print) {
+            print("\u001b[H\u001b[2J")
+            println(toString())
+            Thread.sleep(3000)
+        }
+        var currentPos = cartPositions.sorted().toMutableList()
+        var idx = 0
+        while (idx < currentPos.size) {
+            if (currentPos[idx].removed) {
+                idx++
+                continue
+            }
+            val currentTrack = track(currentPos[idx])
+            var newCart = currentTrack?.cart
+            val newPosition = currentPos[idx].move(newCart?.direction)
+            val newTrack = track(newPosition)
+            newCart = newCart?.changeDirection(newTrack)
+            currentTrack?.cart = null
+            newTrack?.cart = newCart
+            currentPos[idx] = newPosition
+            if (currentPos.filter { it == newPosition && !it.removed }.size > 1)
+                currentPos.forEach { it.removed = (it == newPosition || it.removed) }
+            idx++
+        }
+        cartPositions = currentPos.sorted().toMutableList()
+        if (cartPositions.filter { !it.removed }.count() == 1) {
+            val single = cartPositions.first { !it.removed }
+            val t = track(single)
+            return single.move(t?.cart?.direction)
+        }
+        println(cartPositions.count { it.removed })
+        println(cartPositions.map { "$it${if (it.removed) "X" else ""}" })
+        return null
     }
 }
 
@@ -183,8 +222,11 @@ class CollisionException(val collisionPosition: Position) : Exception()
 fun part1(): String {
     val map = TrackMap(File(FILENAME).readLines())
     return try {
-        (1..200).forEach { Thread.sleep(0); map.moveCarts(false) }
-        "no collisions"
+        while (true) {
+            if (map.moveCartsAndRemove(false) != null)
+                break
+        }
+        map.cartPositions.first { !it.removed }.toString()
     } catch (ex: CollisionException) {
         "${ex.collisionPosition.x},${ex.collisionPosition.y}"
     }
