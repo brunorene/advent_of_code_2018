@@ -2,6 +2,7 @@ package advent.of.code.day15
 
 import java.io.File
 import java.util.*
+import kotlin.collections.LinkedHashSet
 import kotlin.math.abs
 
 data class Position(val x: Int, val y: Int) : Comparable<Position> {
@@ -13,57 +14,72 @@ data class Position(val x: Int, val y: Int) : Comparable<Position> {
         return "(${x.toString().padStart(3, ' ')},${y.toString().padStart(3, ' ')})"
     }
 
-    fun up() = copy(y = y - 1)
-    fun down() = copy(y = y + 1)
-    fun left() = copy(x = x - 1)
-    fun right() = copy(x = x + 1)
+    private fun up() = copy(y = y - 1)
+    private fun down() = copy(y = y + 1)
+    private fun left() = copy(x = x - 1)
+    private fun right() = copy(x = x + 1)
 
-    fun around() = listOf(up(), down(), left(), right())
+    fun around(near: Position? = null) = listOf(up(), left(), right(), down())
+        .filter { it.x >= 0 && it.y >= 0 }
+        .sortedWith(compareBy({ it.distance(near ?: it) }, { it.y }, { it.x }))
 
     fun distance(b: Position) = abs(x - b.x) + abs(y - b.y)
 }
 
-sealed class Piece(open val position: Position, open val symbol: Char) : Comparable<Piece> {
+fun Piece?.isDead() = (this?.hitPoints ?: 0) <= 0
+
+sealed class Piece(open var position: Position, open val symbol: Char, open var hitPoints: Int = 200) :
+    Comparable<Piece> {
+
+    val y: Int
+        get() = position.y
+
+    val x: Int
+        get() = position.x
 
     override fun compareTo(other: Piece) = position.compareTo(other.position)
 }
 
 abstract class Creature(
-    override val position: Position,
-    open var hitPoints: Int = 200,
-    open val attack: Byte = 3,
+    override var position: Position,
+    open val attack: Int = 3,
     override val symbol: Char
 ) : Piece(position, symbol) {
 
-    fun damage(hit: Int): Int {
+    fun damage(hit: Int) {
         hitPoints -= hit
-        return hitPoints
     }
 
-    abstract fun duplicate(newPos: Position = position): Creature
+    abstract fun enemy(crit: Creature?): Boolean
 }
 
 const val WALL = '#'
 const val ELF = 'E'
 const val GOBLIN = 'G'
 
-data class Elf(override val position: Position, override var hitPoints: Int = 200, override val attack: Byte = 3) :
-    Creature(position, hitPoints, attack, ELF) {
-
-    override fun duplicate(newPos: Position) = copy(position = newPos)
+data class Elf(override var position: Position, override val attack: Int = 3, override var hitPoints: Int = 200) :
+    Creature(position, attack, ELF) {
+    override fun enemy(crit: Creature?) = crit is Goblin
 }
 
-data class Goblin(override val position: Position, override var hitPoints: Int = 200, override val attack: Byte = 3) :
-    Creature(position, hitPoints, attack, GOBLIN) {
-
-    override fun duplicate(newPos: Position) = copy(position = newPos)
+data class Goblin(override var position: Position, override val attack: Int = 3, override var hitPoints: Int = 200) :
+    Creature(position, attack, GOBLIN) {
+    override fun enemy(crit: Creature?) = crit is Elf
 }
 
-data class Wall(override val position: Position) : Piece(position, WALL)
+data class Wall(override var position: Position) : Piece(position, WALL)
 
 class GameBoard(initFile: File) {
     var pieces: MutableSet<Piece> = TreeSet()
-    var mapPieces: MutableMap<Position, Piece> = mutableMapOf()
+
+    val elves: Set<Elf>
+        get() = pieces.mapNotNullTo(LinkedHashSet()) { (it as? Elf) }
+
+    val goblins: Set<Goblin>
+        get() = pieces.mapNotNullTo(LinkedHashSet()) { (it as? Goblin) }
+
+    val creatures: Set<Creature>
+        get() = pieces.mapNotNullTo(LinkedHashSet()) { (it as? Creature) }
 
     init {
         initFile.readLines().forEachIndexed { y, line ->
@@ -74,75 +90,51 @@ class GameBoard(initFile: File) {
                     ELF -> Elf(pos)
                     GOBLIN -> Goblin(pos)
                     else -> null
-                }?.apply {
-                    pieces.add(this)
-                    mapPieces[pos] = this
+                }?.let {
+                    pieces.add(it)
                 }
             }
         }
     }
 
-    fun removePiece(piece: Piece) {
-        pieces.remove(piece)
-        mapPieces.remove(piece.position)
-    }
+    fun inRange(crit: Creature): Pair<Creature, Set<Position>> = crit to pieces.mapNotNull { it as? Creature }
+        .filter { crit.enemy(it) }
+        .flatMap { it.position.around() }
+        .filterTo(TreeSet()) { (piece(it) !is Creature) and (piece(it) !is Wall) }
 
-    fun addPiece(piece: Piece) {
-        pieces.add(piece)
-        mapPieces.put(piece.position, piece)
-    }
-
-    fun piece(pos: Position) = mapPieces[pos]
-
-    val elfs: Set<Elf>
-        get() = pieces.filter { it is Elf }
-            .map { it as Elf }
-            .map { it.duplicate() }
-            .toCollection(TreeSet())
-
-    val goblins: Set<Goblin>
-        get() = pieces.filter { it is Goblin }
-            .map { it as Goblin }
-            .map { it.duplicate() }
-            .toCollection(TreeSet())
-
-    val walls: Set<Wall>
-        get() = pieces.filter { it is Wall }
-            .map { it as Wall }
-            .map { it.copy() }
-            .toCollection(TreeSet())
-
-    val creatures: Set<Creature>
-        get() = pieces.filter { it is Creature }
-            .map { it as Creature }
-            .map { it.duplicate() }
-            .toCollection(TreeSet())
-
-    private fun minPath(start: Position, end: Position, past: MutableSet<Position>): List<Position>? = when {
-        piece(start) is Wall -> null
-        piece(start) is Creature -> null
-        past.contains(start) -> null
-        start == end -> listOf(end)
-        else -> {
-            start.around()
-                .sortedBy { it.distance(end) }
-                .mapNotNull { minPath(it, end, past.apply { add(start) }) }
-                .firstOrNull()
-                ?.toMutableList()
-                ?.apply { add(0, start) }
+    private fun distance(
+        pos1: Position,
+        pos2: Position,
+        pastPos: MutableList<Position> = mutableListOf(),
+        distance: Int = 0
+    ): Int? =
+        when {
+            piece(pos1) is Wall -> null
+            (piece(pos1) is Creature) and !piece(pos1).isDead() -> null
+            pos1 in pastPos -> null
+            pos1 == pos2 -> distance
+            else -> pos1.around(pos2)
+                .mapNotNull { distance(it, pos2, pastPos.apply { this += pos1 }, distance + 1) }.min()
         }
+
+    fun nearestReachable(data: Pair<Creature, Set<Position>>) =
+        data.second.flatMap {
+            data.first.position.around(it)
+                .map { a -> a to distance(a, it) }
+                .filter { p -> p.second != null }
+        }.minWith(compareBy({ it.second ?: Int.MAX_VALUE }, { it.first.y }, { it.first.x }))
+            ?.first
+
+    fun buryDead() {
+        pieces = pieces.filterTo(TreeSet()) { it.hitPoints > 0 }
     }
 
-    fun shortestPath(ally: Creature, aroundEnemyPosition: Position) = ally.position.around()
-        .filter { piece(it) == null }
-        .sortedBy { it.distance(aroundEnemyPosition) }
-        .mapNotNull { near1 -> minPath(near1, aroundEnemyPosition, mutableSetOf()) }
-        .minBy { it.size }
+    fun piece(pos: Position?) = pieces.firstOrNull { it.position == pos }
 
     override fun toString(): String {
         var output = ""
-        for (y in (0..(pieces.map { it.position.y }.max() ?: 0))) {
-            for (x in (0..(pieces.map { it.position.x }.max() ?: 0)))
+        for (y in (0..(pieces.map { it.y }.max() ?: 0))) {
+            for (x in (0..(pieces.map { it.x }.max() ?: 0)))
                 output += piece(Position(x, y))?.symbol ?: '.'
             output += '\n'
         }
@@ -150,32 +142,38 @@ class GameBoard(initFile: File) {
     }
 }
 
-val input = File("day15.txt")
+val input = File("day15-test.txt")
 
 fun part1(): Int {
     val board = GameBoard(input)
-    val movedCrits = mutableListOf<Creature>()
-    for (crit in board.creatures) {
-        board.removePiece(crit)
-        val enemies = when (crit) {
-            is Elf -> board.goblins
-            is Goblin -> board.elfs
-            else -> emptySet()
-        }
-        val candidates = mutableListOf<List<Position>>()
-        for (enemy in enemies) {
-            val posAround = enemy.position.around()
-                .filter { board.piece(it) == null }
-                .sortedBy { crit.position.distance(it) }
-            board.shortestPath(crit, posAround[0]) ?: break
-            for (near in posAround) {
-                candidates += board.shortestPath(crit, near) ?: break
+    var round = 0
+    println("init")
+    println(board)
+    while (board.elves.isNotEmpty() and board.goblins.isNotEmpty()) {
+        round++
+        for (crit in board.creatures) {
+            if (crit.isDead())
+                continue
+
+            //move
+            if (crit.position.around().none { crit.enemy(board.piece(it) as? Creature) }) {
+                val chosenPos = board.nearestReachable(board.inRange(crit))
+                if (chosenPos != null)
+                    crit.position = chosenPos
             }
+
+            val target = crit.position.around().filter { crit.enemy(board.piece(it) as? Creature) }
+                .mapNotNull { board.piece(it) as? Creature }
+                .sortedWith(compareBy({ it.hitPoints }, { it.y }, { it.x }))
+                .firstOrNull()
+
+            target?.damage(crit.attack)
         }
-        if (candidates.isEmpty())
-            board.addPiece(crit)
-        else
-            movedCrits += crit.duplicate(candidates.sortedBy { it.size }.first()[0])
+        board.buryDead()
+        println("$round (${board.creatures.size}) -> ${round * board.creatures.map { it.hitPoints }.sum()}")
+        println(board)
+        println(board.creatures.joinToString("\n"))
+        println()
     }
 
     return 0
