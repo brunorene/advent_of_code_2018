@@ -45,10 +45,12 @@ class CPU {
         reg[c] = reg[a] or b
     }
 
+    @Suppress("UNUSED_PARAMETER")
     fun setr(a: Int, b: Int, c: Int) {
         reg[c] = reg[a]
     }
 
+    @Suppress("UNUSED_PARAMETER")
     fun seti(a: Int, b: Int, c: Int) {
         reg[c] = a
     }
